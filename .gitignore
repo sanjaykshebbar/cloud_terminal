@@ -1,0 +1,13 @@
+# Ignore the database directory
+/db/
+
+# Ignore Composer dependencies
+/vendor/
+
+# Ignore Node.js dependencies
+/node_modules/
+
+# Ignore IDE and OS files
+.vscode/
+.idea/
+.DS_Store
