@@ -3,17 +3,17 @@
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
  * ---------------------------------------------
- * Version: 1.1.0
- * Info: This script is a library. It DEFINES the functions for database
- * setup but does not execute them automatically. It is called by run_db_setup.php.
+ * Version: 1.2.0
+ * Info: This script defines the complete database schema for the application.
+ * It is called by the setup wizard to initialize all tables.
  * ---------------------------------------------
  * Changelog:
- * - v1.1.0 (2025-09-29): Added the 'is_active' column to the users table and
- * created the 'activity_logs' table to support user management and logging.
- * - v1.0.3: Removed all 'echo' statements from initialize_database().
- * - v1.0.2: Converted script into a library file.
- * - v1.0.1: Modified script to run from browser.
- * - v1.0.0: Initial DB creation script.
+ * - v1.2.0 (2025-09-29): Updated the schema for machine management.
+ * - Added 'Protocol' column to the 'machines' table.
+ * - Added 'ssh_key' column to 'user_machine_permissions' to store
+ * user-specific keys for machine access.
+ * - v1.1.0: Added 'is_active' column to users and created 'activity_logs' table.
+ * - v1.0.0: Initial schema creation.
  */
 
 function get_db_connection() {
@@ -26,7 +26,6 @@ function get_db_connection() {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         return $pdo;
     } catch (PDOException $e) {
-        // We throw a new generic Exception to avoid leaking detailed DB info.
         throw new Exception("Database connection failed.");
     }
 }
@@ -34,47 +33,44 @@ function get_db_connection() {
 function initialize_database() {
     $db = get_db_connection();
     
-    // SQL for 'users' table, now with the is_active column
+    // Users table
     $users_table_sql = "
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        Fname TEXT NOT NULL,
-        LName TEXT NOT NULL,
-        Username TEXT UNIQUE NOT NULL,
-        EmailID TEXT UNIQUE NOT NULL,
+        Fname TEXT NOT NULL, LName TEXT NOT NULL,
+        Username TEXT UNIQUE NOT NULL, EmailID TEXT UNIQUE NOT NULL,
         Password TEXT NOT NULL,
         UserType TEXT CHECK(UserType IN ('Admin', 'Faculty', 'Learner')) DEFAULT NULL,
         is_active INTEGER NOT NULL DEFAULT 1
     );";
 
-    // SQL for 'machines' table (Unchanged)
+    // Machines table with new Protocol column
     $machines_table_sql = "
     CREATE TABLE IF NOT EXISTS machines (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        IPAddress TEXT NOT NULL,
         MachineName TEXT NOT NULL,
-        SSHKEYS TEXT DEFAULT NULL
+        IPAddress TEXT NOT NULL,
+        Protocol TEXT NOT NULL CHECK(Protocol IN ('SSH', 'RDP'))
     );";
 
-    // SQL for 'user_machine_permissions' table (Unchanged)
+    // Permissions table with new ssh_key column
     $permissions_table_sql = "
     CREATE TABLE IF NOT EXISTS user_machine_permissions (
         user_id INTEGER NOT NULL,
         machine_id INTEGER NOT NULL,
+        ssh_key TEXT DEFAULT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE,
         PRIMARY KEY (user_id, machine_id)
     );";
     
-    // SQL for the new 'activity_logs' table
+    // Activity Logs table
     $logs_table_sql = "
     CREATE TABLE IF NOT EXISTS activity_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        actor_id INTEGER,
-        action TEXT NOT NULL,
-        target_id INTEGER,
-        details TEXT,
+        actor_id INTEGER, action TEXT NOT NULL,
+        target_id INTEGER, details TEXT,
         FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL
     );";
 
@@ -82,7 +78,6 @@ function initialize_database() {
     $db->exec($users_table_sql);
     $db->exec($machines_table_sql);
     $db->exec($permissions_table_sql);
-    $db->exec($logs_table_sql); // <-- Added execution for the logs table
+    $db->exec($logs_table_sql);
 }
-
 ?>
