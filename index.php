@@ -3,16 +3,15 @@
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
  * ---------------------------------------------
- * Version: 1.1.0
+ * Version: 1.2.0
  * Info: This is the main landing page for the Cloud Terminal application.
- * It serves as the login page and now includes a section to display
- * detailed error messages to the user upon a failed login attempt.
+ * It serves as the login page and displays detailed error messages.
  * ---------------------------------------------
  * Changelog:
- * - v1.1.0 (2025-09-29): Added a PHP block to handle and display specific
- * login errors passed as URL parameters from auth.php.
- * - v1.0.0: Initial creation of the login page with a form and a
- * development-only link to the setup page.
+ * - v1.2.0 (2025-09-29): Added the 'user_deleted' error message to handle
+ * cases where an active session belongs to a deleted user.
+ * - v1.1.0: Added a PHP block to handle and display specific login errors.
+ * - v1.0.0: Initial creation of the login page.
  */
 ?>
 <!DOCTYPE html>
@@ -37,6 +36,9 @@
                 case 'user_inactive':
                     $error_message = 'This account has been disabled. Please contact an administrator.';
                     break;
+                case 'user_deleted': // <-- KEY UPDATE IS HERE
+                    $error_message = 'This account no longer exists and your session has been terminated.';
+                    break;
                 case 'invalid_credentials':
                     $error_message = 'Incorrect password. Please try again.';
                     break;
@@ -46,7 +48,7 @@
             }
             ?>
             <div class="bg-red-800 border border-red-600 text-red-200 px-4 py-3 rounded-lg relative mb-6" role="alert">
-                <strong class="font-bold">Login Failed:</strong>
+                <strong class="font-bold">Access Denied:</strong>
                 <span class="block sm:inline"><?= htmlspecialchars($error_message) ?></span>
             </div>
         <?php endif; ?>

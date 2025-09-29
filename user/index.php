@@ -7,14 +7,26 @@ error_reporting(E_ALL);
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
  * ---------------------------------------------
- * Version: 1.0.0
- * Info: Main page for user management. Lists all users and provides
- * links to create, edit, and delete them. Access is restricted to Admins.
+ * Version: 1.1.0
+ * Info: User management page. Now uses the centralized session validator.
  * ---------------------------------------------
  * Changelog:
- * - v1.0.0 (2025-09-29): Initial creation of the user listing page.
+ * - v1.1.0 (2025-09-29): Replaced manual session check with a call to
+ * the new validate_active_session() function.
+ * - v1.0.0: Initial creation of the user listing page.
  */
 session_start();
+
+// Centralized session validation
+require_once '../src/session_check.php';
+$current_user = validate_active_session();
+
+// Security Check: Now we use the fresh data from the validator
+if ($current_user['UserType'] !== 'Admin') {
+    http_response_code(403);
+    die('Forbidden: You do not have permission to access this page.');
+}
+
 
 // Security Check: Ensure user is logged in and is an Admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'Admin') {

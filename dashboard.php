@@ -3,25 +3,24 @@
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
  * ---------------------------------------------
- * Version: 1.1.0
- * Info: The main user dashboard. Now includes a conditional panel for
- * administrator-specific controls.
+ * Version: 1.2.0
+ * Info: The main user dashboard. Now uses the centralized session
+ * validator to ensure user data is always current.
  * ---------------------------------------------
  * Changelog:
- * - v1.1.0 (2025-09-29): Added an Admin Controls section with buttons for
- * User, Group, and Machine management. Visibility is restricted to Admins.
+ * - v1.2.0 (2025-09-29): Replaced manual session check with a call to
+ * the new validate_active_session() function.
+ * - v1.1.0: Added the Admin Controls section.
  * - v1.0.0: Initial creation of the dashboard layout.
  */
 
-session_start();
+// Centralized session validation
+require_once __DIR__ . '/src/session_check.php';
+$current_user = validate_active_session();
 
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit();
-}
-
-$username = isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'User';
-$user_type = isset($_SESSION['user_type']) ? $_SESSION['user_type'] : null;
+// Use the freshly validated data for display
+$username = htmlspecialchars($current_user['Username']);
+$user_type = $current_user['UserType'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
