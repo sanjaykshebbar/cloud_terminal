@@ -1,16 +1,18 @@
-    <?php
+<?php
 /**
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
  * ---------------------------------------------
- * Version: 1.0.0
+ * Version: 1.1.0
  * Info: This is the main landing page for the Cloud Terminal application.
- * It serves as the login page for users to access their terminals.
- * During development, it includes a link to the one-time setup script.
+ * It serves as the login page and now includes a section to display
+ * detailed error messages to the user upon a failed login attempt.
  * ---------------------------------------------
  * Changelog:
- * - v1.0.0 (2025-09-29): Initial creation of the login page with Tailwind CSS.
- * Added a form for user login and a development-only button to access setup.php.
+ * - v1.1.0 (2025-09-29): Added a PHP block to handle and display specific
+ * login errors passed as URL parameters from auth.php.
+ * - v1.0.0: Initial creation of the login page with a form and a
+ * development-only link to the setup page.
  */
 ?>
 <!DOCTYPE html>
@@ -25,6 +27,30 @@
     <div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-sm">
         <h1 class="text-3xl font-bold mb-6 text-center text-indigo-400">Cloud Terminal 🔑</h1>
         
+        <?php if (isset($_GET['error'])): ?>
+            <?php
+            $error_message = '';
+            switch ($_GET['error']) {
+                case 'user_not_found':
+                    $error_message = 'No account found with that username.';
+                    break;
+                case 'user_inactive':
+                    $error_message = 'This account has been disabled. Please contact an administrator.';
+                    break;
+                case 'invalid_credentials':
+                    $error_message = 'Incorrect password. Please try again.';
+                    break;
+                default:
+                    $error_message = 'An unknown error occurred. Please try again.';
+                    break;
+            }
+            ?>
+            <div class="bg-red-800 border border-red-600 text-red-200 px-4 py-3 rounded-lg relative mb-6" role="alert">
+                <strong class="font-bold">Login Failed:</strong>
+                <span class="block sm:inline"><?= htmlspecialchars($error_message) ?></span>
+            </div>
+        <?php endif; ?>
+
         <form action="src/auth.php" method="POST">
             <div class="mb-4">
                 <label for="username" class="block mb-2 text-sm font-medium text-gray-300">Username</label>
