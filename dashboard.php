@@ -3,28 +3,25 @@
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
  * ---------------------------------------------
- * Version: 1.0.0
- * Info: The main user dashboard, displayed after a successful login.
- * It provides the primary interface for users to interact with the application.
- * This page is protected and requires an active session.
+ * Version: 1.1.0
+ * Info: The main user dashboard. Now includes a conditional panel for
+ * administrator-specific controls.
  * ---------------------------------------------
  * Changelog:
- * - v1.0.0 (2025-09-29): Initial creation of the dashboard layout with a
- * responsive navbar and main content area using Tailwind CSS. Includes
- * session protection to redirect unauthenticated users.
+ * - v1.1.0 (2025-09-29): Added an Admin Controls section with buttons for
+ * User, Group, and Machine management. Visibility is restricted to Admins.
+ * - v1.0.0: Initial creation of the dashboard layout.
  */
 
-// Start the session to access session variables
 session_start();
 
-// If the user is not logged in, redirect to the login page
 if (!isset($_SESSION['user_id'])) {
     header('Location: index.php');
     exit();
 }
 
-// Get the username from the session for display, use htmlspecialchars for security
 $username = isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'User';
+$user_type = isset($_SESSION['user_type']) ? $_SESSION['user_type'] : null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,7 +41,7 @@ $username = isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username'
                     </div>
                     <div class="flex items-center">
                         <span class="mr-4 text-gray-300">Welcome, <strong class="font-medium"><?php echo $username; ?></strong></span>
-                        <a href="src/logout.php" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        <a href="src/logout.php" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">
                             Logout
                         </a>
                     </div>
@@ -55,13 +52,42 @@ $username = isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username'
         <main class="flex-grow p-8">
             <div class="max-w-7xl mx-auto">
                 <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
-                
+
+                <?php if ($user_type === 'Admin'): ?>
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-400">Admin Controls</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <a href="user/index.php" class="bg-indigo-600 hover:bg-indigo-700 p-6 rounded-lg flex items-center space-x-4 transition">
+                            <span class="text-4xl">👤</span>
+                            <div>
+                                <h3 class="font-bold text-lg">User Management</h3>
+                                <p class="text-sm text-indigo-200">Create, edit, and manage users.</p>
+                            </div>
+                        </a>
+                        <a href="#" class="bg-gray-700 p-6 rounded-lg flex items-center space-x-4 cursor-not-allowed opacity-50">
+                            <span class="text-4xl">👥</span>
+                            <div>
+                                <h3 class="font-bold text-lg">Group Management</h3>
+                                <p class="text-sm text-gray-400">Coming soon.</p>
+                            </div>
+                        </a>
+                        <a href="#" class="bg-gray-700 p-6 rounded-lg flex items-center space-x-4 cursor-not-allowed opacity-50">
+                            <span class="text-4xl">💻</span>
+                            <div>
+                                <h3 class="font-bold text-lg">Machine Management</h3>
+                                <p class="text-sm text-gray-400">Coming soon.</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <div class="bg-gray-800 p-6 rounded-lg shadow-inner">
                     <h2 class="text-xl font-semibold mb-4">Your Machines</h2>
                     <p class="text-gray-400">
-                        Your assigned machines and control buttons will appear here based on your user type.
+                        Your assigned machines will appear here.
                     </p>
-                    </div>
+                </div>
             </div>
         </main>
 
