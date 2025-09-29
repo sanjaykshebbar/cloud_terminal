@@ -3,22 +3,25 @@
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
  * ---------------------------------------------
- * Version: 1.0.0
+ * Version: 1.0.1
  * Info: This script handles the database setup for the Cloud Terminal application.
  * It creates a connection to an SQLite database and initializes the necessary
- * tables: 'users', 'machines', and a linking table 'user_machine_permissions'
- * to manage access control. This script is intended to be run once from the
- * command line to prepare the database schema.
+ * tables. This version is modified to run directly from a web browser.
+ *
+ * SECURITY WARNING: After running this script successfully, you MUST delete it
+ * or move it outside of your web server's public directory.
  */
 
-// src/db.php
+// Set content type to plain text for cleaner browser output
+header('Content-Type: text/plain');
 
 /**
  * Gets a connection to the SQLite database.
  * @return PDO The PDO database connection object.
  */
 function get_db_connection() {
-    // Define the path to the database file relative to this script's location.
+    // The path is relative to this file's location (src), so it correctly
+    // points to the 'db' folder in the project root.
     $db_path = __DIR__ . '/../db/cloudterminal.db';
     
     // Ensure the directory exists.
@@ -27,15 +30,11 @@ function get_db_connection() {
     }
 
     try {
-        // Create a new PDO instance. The connection is a file-based SQLite DB.
         $pdo = new PDO('sqlite:' . $db_path);
-        
-        // Set the PDO error mode to exception for better error handling.
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
         return $pdo;
     } catch (PDOException $e) {
-        // Halt script execution if connection fails.
+        http_response_code(500);
         die("Database connection failed: " . $e->getMessage());
     }
 }
@@ -54,7 +53,7 @@ function initialize_database() {
         LName TEXT NOT NULL,
         Username TEXT UNIQUE NOT NULL,
         EmailID TEXT UNIQUE NOT NULL,
-        Password TEXT NOT NULL, -- Will store the SHA512 hash
+        Password TEXT NOT NULL,
         UserType TEXT CHECK(UserType IN ('Admin', 'Faculty', 'Learner')) DEFAULT NULL
     );";
 
@@ -78,22 +77,25 @@ function initialize_database() {
     );";
 
     try {
-        // Execute all CREATE TABLE statements
         $db->exec($users_table_sql);
-        $db->exec($machines_table_sql);
-        $db->exec($permissions_table_sql);
+        echo "✅ 'users' table created successfully.\n";
         
-        echo "✅ Database and tables created successfully (if they didn't exist).\n";
+        $db->exec($machines_table_sql);
+        echo "✅ 'machines' table created successfully.\n";
+
+        $db->exec($permissions_table_sql);
+        echo "✅ 'user_machine_permissions' table created successfully.\n\n";
+
+        echo "🎉 Database setup is complete.\n";
 
     } catch (PDOException $e) {
+        http_response_code(500);
         die("Error creating tables: " . $e->getMessage());
     }
 }
 
-// This block allows the script to be executed directly from the command line for setup.
-// The check `php_sapi_name() === 'cli'` ensures this part only runs in Command Line Interface mode.
-if (php_sapi_name() === 'cli') {
-    initialize_database();
-}
+// --- SCRIPT EXECUTION ---
+// This function is now called directly when the script is accessed.
+initialize_database();
 
 ?>
