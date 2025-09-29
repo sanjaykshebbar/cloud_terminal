@@ -1,3 +1,18 @@
+<?php
+/**
+ * Code Author: SanjayKS
+ * Email ID: sanjaykehebbar@gmail.com
+ * ---------------------------------------------
+ * Version: 1.0.1
+ * Info: A user-friendly, one-time setup wizard for the application.
+ * It presents a button that, when clicked, triggers a background process
+ * to create the database and tables, and then secures the DB script.
+ * ---------------------------------------------
+ * Changelog:
+ * - v1.0.1 (2025-09-29): Added standardized versioning and info block.
+ * - v1.0.0 (Initial): Created the setup wizard functionality.
+ */
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,29 +34,25 @@
     </div>
 
 <script>
+    // This JavaScript is the same as the previous version.
     const setupButton = document.getElementById('setup-button');
     const statusMessage = document.getElementById('status-message');
 
     setupButton.addEventListener('click', async () => {
-        // Change button state to show it's working
         setupButton.disabled = true;
         setupButton.innerHTML = '⚙️ Setting up, please wait...';
         statusMessage.classList.add('hidden');
 
         try {
-            // Make a background request to the setup handler.
-            // The user's URL bar does not change.
             const response = await fetch('src/run_db_setup.php', { method: 'POST' });
             const result = await response.json();
 
             if (result.success) {
-                // On success, show a success message and hide the button
                 statusMessage.innerHTML = `<strong class="font-bold">Success!</strong><br>${result.message}`;
                 statusMessage.classList.remove('hidden', 'bg-red-900');
                 statusMessage.classList.add('bg-green-900', 'text-green-200');
                 setupButton.classList.add('hidden');
             } else {
-                // On failure, show an error message and re-enable the button
                 throw new Error(result.message);
             }
         } catch (error) {
