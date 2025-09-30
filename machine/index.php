@@ -2,8 +2,12 @@
 /**
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
- * Version: 1.0.0
- * Info: Main page for machine management. Lists all machines.
+ * Version: 1.1.0
+ * Info: Main page for machine management. Now includes a link to assign users.
+ * ---------------------------------------------
+ * Changelog:
+ * - v1.1.0 (2025-09-30): Added an "Assign Users" link in the actions column for each machine.
+ * - v1.0.0: Initial creation of the machine listing page.
  */
 require_once '../src/session_check.php';
 $current_user = validate_active_session();
@@ -54,8 +58,10 @@ $machines = $db->query("SELECT * FROM machines ORDER BY MachineName")->fetchAll(
                                 <?= htmlspecialchars($machine['Protocol']) ?>
                             </span>
                         </td>
-                        <td class="p-4">
+                        <td class="p-4 whitespace-nowrap">
                             <a href="form.php?id=<?= $machine['id'] ?>" class="text-blue-400 hover:text-blue-300 mr-4">Edit</a>
+                            <!-- ✨ NEW LINK IS HERE ✨ -->
+                            <a href="assign.php?id=<?= $machine['id'] ?>" class="text-green-400 hover:text-green-300 mr-4">Assign Users</a>
                             <a href="actions.php?action=delete&id=<?= $machine['id'] ?>" class="text-red-400 hover:text-red-300" onclick="return confirm('Are you sure?');">Delete</a>
                         </td>
                     </tr>
