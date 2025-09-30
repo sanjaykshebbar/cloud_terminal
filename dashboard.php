@@ -2,25 +2,31 @@
 /**
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
- * Version: 1.4.0
- * Info: User dashboard. Admins now see all machines, while other users
- * see only their assigned machines.
+ * ---------------------------------------------
+ * Version: 1.5.0
+ * Info: The main user dashboard. It displays accessible machines based on
+ * the user's role (Admins see all, others see assigned) and provides
+ * functional "Connect" buttons for SSH and RDP protocols.
  * ---------------------------------------------
  * Changelog:
- * - v1.4.0 (2025-09-30): Implemented conditional logic to grant Admins access to all machines.
+ * - v1.5.0 (2025-09-30): Updated the Connect button to link to the correct
+ * handler (terminal.php for SSH, rdp_handler.php for RDP).
+ * - v1.4.0: Implemented conditional logic to grant Admins access to all machines.
  * - v1.3.0: Added DB query and display logic for user-specific machines.
- * - v1.2.0: Integrated centralized session validation.
+ * - v1.2.0: Integrated the centralized session validator.
  * - v1.1.0: Added the Admin Controls section.
  * - v1.0.0: Initial creation of the dashboard layout.
  */
 
+// 1. Centralized session validation to ensure data is always current
 require_once __DIR__ . '/src/session_check.php';
 $current_user = validate_active_session();
 
+// 2. Get freshly validated user data
 $username = htmlspecialchars($current_user['Username']);
 $user_type = $current_user['UserType'];
 
-// ✨ NEW CONDITIONAL LOGIC FOR FETCHING MACHINES ✨
+// 3. Conditional logic to fetch machines based on user type
 $db = get_db_connection();
 $assigned_machines = [];
 
@@ -28,7 +34,7 @@ if ($user_type === 'Admin') {
     // If user is an Admin, get ALL machines
     $assigned_machines = $db->query("SELECT * FROM machines ORDER BY MachineName")->fetchAll(PDO::FETCH_ASSOC);
 } else {
-    // For all other users, get only their assigned machines
+    // For all other users, get only their explicitly assigned machines
     $machines_stmt = $db->prepare(
         "SELECT m.* FROM machines m 
          JOIN user_machine_permissions p ON m.id = p.machine_id
@@ -93,7 +99,17 @@ if ($user_type === 'Admin') {
                                     </div>
                                 </div>
                                 <div class="mt-auto">
-                                    <a href="#" class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                                    <?php
+                                        $connect_link = '#';
+                                        if ($machine['Protocol'] == 'SSH') {
+                                            $connect_link = "terminal.php?id=" . $machine['id'];
+                                        } elseif ($machine['Protocol'] == 'RDP') {
+                                            $connect_link = "rdp_handler.php?id=" . $machine['id'];
+                                        }
+                                    ?>
+                                    <a href="<?= $connect_link ?>" 
+                                       target="<?= $machine['Protocol'] == 'SSH' ? '_blank' : '_self' ?>"
+                                       class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
                                         Connect
                                     </a>
                                 </div>
