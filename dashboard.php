@@ -2,11 +2,13 @@
 /**
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
- * Version: 1.3.0
- * Info: User dashboard. Now fetches and displays machines assigned to the user.
+ * Version: 1.4.0
+ * Info: User dashboard. Admins now see all machines, while other users
+ * see only their assigned machines.
  * ---------------------------------------------
  * Changelog:
- * - v1.3.0 (2025-09-30): Added DB query and display logic for user-specific machines.
+ * - v1.4.0 (2025-09-30): Implemented conditional logic to grant Admins access to all machines.
+ * - v1.3.0: Added DB query and display logic for user-specific machines.
  * - v1.2.0: Integrated centralized session validation.
  * - v1.1.0: Added the Admin Controls section.
  * - v1.0.0: Initial creation of the dashboard layout.
@@ -18,15 +20,23 @@ $current_user = validate_active_session();
 $username = htmlspecialchars($current_user['Username']);
 $user_type = $current_user['UserType'];
 
-// ✨ NEW DB QUERY TO GET ASSIGNED MACHINES ✨
+// ✨ NEW CONDITIONAL LOGIC FOR FETCHING MACHINES ✨
 $db = get_db_connection();
-$machines_stmt = $db->prepare(
-    "SELECT m.* FROM machines m 
-     JOIN user_machine_permissions p ON m.id = p.machine_id
-     WHERE p.user_id = ?"
-);
-$machines_stmt->execute([$current_user['id']]);
-$assigned_machines = $machines_stmt->fetchAll(PDO::FETCH_ASSOC);
+$assigned_machines = [];
+
+if ($user_type === 'Admin') {
+    // If user is an Admin, get ALL machines
+    $assigned_machines = $db->query("SELECT * FROM machines ORDER BY MachineName")->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    // For all other users, get only their assigned machines
+    $machines_stmt = $db->prepare(
+        "SELECT m.* FROM machines m 
+         JOIN user_machine_permissions p ON m.id = p.machine_id
+         WHERE p.user_id = ?"
+    );
+    $machines_stmt->execute([$current_user['id']]);
+    $assigned_machines = $machines_stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -38,7 +48,6 @@ $assigned_machines = $machines_stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body class="bg-gray-900 text-white font-sans">
     <div id="app" class="min-h-screen flex flex-col">
-        <!-- Navigation Bar (Unchanged) -->
         <nav class="bg-gray-800 shadow-lg">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex justify-between items-center h-16">
@@ -51,32 +60,23 @@ $assigned_machines = $machines_stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </nav>
 
-        <!-- Main Content Area -->
         <main class="flex-grow p-8">
             <div class="max-w-7xl mx-auto">
                 <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
 
-                <!-- Admin Control Panel (Unchanged) -->
                 <?php if ($user_type === 'Admin'): ?>
                 <div class="mb-8">
                     <h2 class="text-xl font-semibold mb-4 text-gray-400">Admin Controls</h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <a href="user/index.php" class="bg-indigo-600 hover:bg-indigo-700 p-6 rounded-lg flex items-center space-x-4 transition">
-                            <span class="text-4xl">👤</span><div><h3 class="font-bold text-lg">User Management</h3><p class="text-sm text-indigo-200">Create, edit, and manage users.</p></div>
-                        </a>
-                        <a href="#" class="bg-gray-700 p-6 rounded-lg flex items-center space-x-4 cursor-not-allowed opacity-50">
-                            <span class="text-4xl">👥</span><div><h3 class="font-bold text-lg">Group Management</h3><p class="text-sm text-gray-400">Coming soon.</p></div>
-                        </a>
-                        <a href="machine/index.php" class="bg-green-600 hover:bg-green-700 p-6 rounded-lg flex items-center space-x-4 transition">
-                            <span class="text-4xl">💻</span><div><h3 class="font-bold text-lg">Machine Management</h3><p class="text-sm text-green-200">Add, edit, and manage machines.</p></div>
-                        </a>
+                        <a href="user/index.php" class="bg-indigo-600 hover:bg-indigo-700 p-6 rounded-lg flex items-center space-x-4 transition"><span class="text-4xl">👤</span><div><h3 class="font-bold text-lg">User Management</h3><p class="text-sm text-indigo-200">Create, edit, and manage users.</p></div></a>
+                        <a href="#" class="bg-gray-700 p-6 rounded-lg flex items-center space-x-4 cursor-not-allowed opacity-50"><span class="text-4xl">👥</span><div><h3 class="font-bold text-lg">Group Management</h3><p class="text-sm text-gray-400">Coming soon.</p></div></a>
+                        <a href="machine/index.php" class="bg-green-600 hover:bg-green-700 p-6 rounded-lg flex items-center space-x-4 transition"><span class="text-4xl">💻</span><div><h3 class="font-bold text-lg">Machine Management</h3><p class="text-sm text-green-200">Add, edit, and manage machines.</p></div></a>
                     </div>
                 </div>
                 <?php endif; ?>
 
-                <!-- ✨ UPDATED MACHINE DISPLAY AREA ✨ -->
                 <div>
-                    <h2 class="text-xl font-semibold mb-4">Your Assigned Machines</h2>
+                    <h2 class="text-xl font-semibold mb-4">Your Accessible Machines</h2>
                     <?php if (empty($assigned_machines)): ?>
                         <div class="bg-gray-800 p-6 rounded-lg shadow-inner text-center text-gray-400">
                             You have not been assigned any machines yet. Please contact an administrator.
@@ -105,7 +105,6 @@ $assigned_machines = $machines_stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </main>
 
-        <!-- Footer (Unchanged) -->
         <footer class="bg-gray-800 text-center p-4 text-sm text-gray-500">
             Cloud Terminal &copy; <?php echo date('Y'); ?>. All Rights Reserved.
         </footer>
