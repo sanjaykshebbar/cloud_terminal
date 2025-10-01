@@ -3,16 +3,17 @@
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
  * ---------------------------------------------
- * Version: 1.2.0
+ * Version: 1.3.0
  * Info: This script defines the complete database schema for the application.
- * It is called by the setup wizard to initialize all tables.
+ * It is called by the setup wizard to initialize all tables required
+ * for user management, machine management, and SSH key storage.
  * ---------------------------------------------
  * Changelog:
- * - v1.2.0 (2025-09-29): Updated the schema for machine management.
- * - Added 'Protocol' column to the 'machines' table.
- * - Added 'ssh_key' column to 'user_machine_permissions' to store
- * user-specific keys for machine access.
- * - v1.1.0: Added 'is_active' column to users and created 'activity_logs' table.
+ * - v1.3.0 (2025-10-01): Finalized schema. Added 'ssh_public_key' to the
+ * 'users' table to support passwordless SSH authentication. Cleaned up
+ * the 'user_machine_permissions' table.
+ * - v1.2.0: Added 'Protocol' to 'machines' and prepared permissions table.
+ * - v1.1.0: Added 'is_active' to users and created 'activity_logs' table.
  * - v1.0.0: Initial schema creation.
  */
 
@@ -33,18 +34,21 @@ function get_db_connection() {
 function initialize_database() {
     $db = get_db_connection();
     
-    // Users table
+    // Final 'users' table with ssh_public_key
     $users_table_sql = "
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        Fname TEXT NOT NULL, LName TEXT NOT NULL,
-        Username TEXT UNIQUE NOT NULL, EmailID TEXT UNIQUE NOT NULL,
+        Fname TEXT NOT NULL,
+        LName TEXT NOT NULL,
+        Username TEXT UNIQUE NOT NULL,
+        EmailID TEXT UNIQUE NOT NULL,
         Password TEXT NOT NULL,
         UserType TEXT CHECK(UserType IN ('Admin', 'Faculty', 'Learner')) DEFAULT NULL,
-        is_active INTEGER NOT NULL DEFAULT 1
+        is_active INTEGER NOT NULL DEFAULT 1,
+        ssh_public_key TEXT DEFAULT NULL
     );";
 
-    // Machines table with new Protocol column
+    // Final 'machines' table
     $machines_table_sql = "
     CREATE TABLE IF NOT EXISTS machines (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,24 +57,25 @@ function initialize_database() {
         Protocol TEXT NOT NULL CHECK(Protocol IN ('SSH', 'RDP'))
     );";
 
-    // Permissions table with new ssh_key column
+    // Final 'user_machine_permissions' table (simplified for clarity)
     $permissions_table_sql = "
     CREATE TABLE IF NOT EXISTS user_machine_permissions (
         user_id INTEGER NOT NULL,
         machine_id INTEGER NOT NULL,
-        ssh_key TEXT DEFAULT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE,
         PRIMARY KEY (user_id, machine_id)
     );";
     
-    // Activity Logs table
+    // Final 'activity_logs' table
     $logs_table_sql = "
     CREATE TABLE IF NOT EXISTS activity_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        actor_id INTEGER, action TEXT NOT NULL,
-        target_id INTEGER, details TEXT,
+        actor_id INTEGER,
+        action TEXT NOT NULL,
+        target_id INTEGER,
+        details TEXT,
         FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL
     );";
 
