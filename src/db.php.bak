@@ -2,18 +2,13 @@
 /**
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
- * ---------------------------------------------
- * Version: 1.2.0
- * Info: This script defines the complete database schema for the application.
- * It is called by the setup wizard to initialize all tables.
+ * Version: 1.5.0
+ * Info: Added a table for single-use WebSocket authentication tokens.
  * ---------------------------------------------
  * Changelog:
- * - v1.2.0 (2025-09-29): Updated the schema for machine management.
- * - Added 'Protocol' column to the 'machines' table.
- * - Added 'ssh_key' column to 'user_machine_permissions' to store
- * user-specific keys for machine access.
- * - v1.1.0: Added 'is_active' column to users and created 'activity_logs' table.
- * - v1.0.0: Initial schema creation.
+ * - v1.5.0 (2025-10-01): Added 'websocket_tokens' table to support a more
+ * robust, stateless authentication method for the terminal.
+ * - v1.4.0: Implemented multi-key system for SSH.
  */
 
 function get_db_connection() {
@@ -33,7 +28,6 @@ function get_db_connection() {
 function initialize_database() {
     $db = get_db_connection();
     
-    // Users table
     $users_table_sql = "
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +38,15 @@ function initialize_database() {
         is_active INTEGER NOT NULL DEFAULT 1
     );";
 
-    // Machines table with new Protocol column
+    $ssh_keys_table_sql = "
+    CREATE TABLE IF NOT EXISTS user_ssh_keys (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        key_name TEXT NOT NULL,
+        public_key TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );";
+
     $machines_table_sql = "
     CREATE TABLE IF NOT EXISTS machines (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,18 +55,15 @@ function initialize_database() {
         Protocol TEXT NOT NULL CHECK(Protocol IN ('SSH', 'RDP'))
     );";
 
-    // Permissions table with new ssh_key column
     $permissions_table_sql = "
     CREATE TABLE IF NOT EXISTS user_machine_permissions (
         user_id INTEGER NOT NULL,
         machine_id INTEGER NOT NULL,
-        ssh_key TEXT DEFAULT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE,
         PRIMARY KEY (user_id, machine_id)
     );";
     
-    // Activity Logs table
     $logs_table_sql = "
     CREATE TABLE IF NOT EXISTS activity_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,10 +73,21 @@ function initialize_database() {
         FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL
     );";
 
-    // Execute all table creation statements
+    $tokens_table_sql = "
+    CREATE TABLE IF NOT EXISTS websocket_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        machine_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );";
+
     $db->exec($users_table_sql);
+    $db->exec($ssh_keys_table_sql);
     $db->exec($machines_table_sql);
     $db->exec($permissions_table_sql);
     $db->exec($logs_table_sql);
+    $db->exec($tokens_table_sql);
 }
 ?>
