@@ -1,0 +1,24 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # This service runs your Apache web server
+  webserver:
+    build: .
+    image: cloud-terminal  # <-- Add this line
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+    container_name: cloud-terminal-web
+
+  # This service runs your WebSocket server
+  websocket:
+    build: .
+    image: cloud-terminal  # <-- And add this line here too
+    command: php src/websocket_server.php
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www/html
+    container_name: cloud-terminal-ws

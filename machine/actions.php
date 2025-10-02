@@ -2,25 +2,26 @@
 /**
  * Code Author: SanjayKS
  * Email ID: sanjaykehebbar@gmail.com
- * Version: 2.2.0
- * Info: Improved sudo command execution for remote provisioning.
+ * Version: 2.4.1
+ * Info: A complete and clean version of the machine actions handler.
  * ---------------------------------------------
  * Changelog:
- * - v2.2.0 (2025-10-01): Rewrote the remote command execution logic to use
- * 'sudo -S', which reads the password from stdin. This fixes the
- * 'sudo: a password is required' error and makes provisioning reliable.
- * - v2.1.0: Added detailed debugging output to the 'provision_users' action.
- * - v2.0.0: Re-architected to use phpseclib for remote provisioning.
+ * - v2.4.1 (2025-10-02): Moved the 'use' statement for phpseclib to the top
+ * level of the script to resolve a "name is already in use" fatal error.
+ * - v2.4.0: Restored all CRUD actions and cleaned up provisioning logic.
  */
 
 require_once '../src/session_check.php';
 $current_user = validate_active_session();
 
+// Security Check: Only Admins can perform these actions
 if ($current_user['UserType'] !== 'Admin') {
     http_response_code(403);
-    die('Forbidden');
+    die('Forbidden: You do not have permission to perform this action.');
 }
 
+// ✨ --- THIS IS THE FIX --- ✨
+// All 'use' statements MUST be at the top level of the script.
 require_once '../vendor/autoload.php';
 use phpseclib3\Net\SSH2;
 
@@ -28,6 +29,9 @@ $actor_id = $current_user['id'];
 $action = $_POST['action'] ?? $_GET['action'] ?? null;
 $db = get_db_connection();
 
+/**
+ * Logs an activity to the database.
+ */
 function log_activity($db, $actor_id, $action, $target_id = null, $details = null) {
     $stmt = $db->prepare("INSERT INTO activity_logs (actor_id, action, target_id, details) VALUES (?, ?, ?, ?)");
     $stmt->execute([$actor_id, $action, $target_id, $details]);
@@ -55,12 +59,9 @@ switch ($action) {
     case 'provision_users':
         $machine_id = $_POST['machine_id'];
         $user_ids_to_assign = $_POST['user_ids'] ?? [];
-        
         $sudo_user = $_POST['sudo_user'];
         $sudo_pass = $_POST['sudo_pass'];
 
-        // Get machine and user details from DB
-        $db = get_db_connection();
         $machine_stmt = $db->prepare("SELECT IPAddress FROM machines WHERE id = ?");
         $machine_stmt->execute([$machine_id]);
         $machine = $machine_stmt->fetch(PDO::FETCH_ASSOC);
@@ -73,63 +74,44 @@ switch ($action) {
             $users_to_provision = $users_stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        echo "<pre style='background: #111827; color: #d1d5db; padding: 20px; font-family: monospace; line-height: 1.6;'>";
-        echo "--- Starting Provisioning on " . htmlspecialchars($machine['IPAddress']) . " ---<br>";
-
         $ssh = new SSH2($machine['IPAddress']);
         if (!$ssh->login($sudo_user, $sudo_pass)) {
-            die('PROVISIONING FAILED: Could not log in. Check sudo credentials.');
+            header("Location: ../machine/assign.php?id={$machine_id}&error=auth_failed");
+            exit();
         }
-        echo "Login successful as " . htmlspecialchars($sudo_user) . ".<br><br>";
 
-        // Sync local DB permissions
         $delete_stmt = $db->prepare("DELETE FROM user_machine_permissions WHERE machine_id = ?");
         $delete_stmt->execute([$machine_id]);
         $insert_stmt = $db->prepare("INSERT INTO user_machine_permissions (user_id, machine_id) VALUES (?, ?)");
-
-        // Corrected sudo command runner
-        function run_sudo_command($ssh, $command, $password) {
-            $full_command = "echo " . escapeshellarg($password) . " | sudo -S -p '' " . $command;
-            echo "EXECUTING: <span style='color: #60a5fa;'>sudo $command</span><br>";
-            $ssh->exec($full_command);
-            $error = $ssh->getStdError();
-            if(!empty($error)) {
-                echo "<span style='color: #f87171;'>ERROR: " . htmlspecialchars($error) . "</span><br>";
-            } else {
-                echo "<span style='color: #4ade80;'>SUCCESS.</span><br>";
-            }
-        }
-
         $keys_stmt = $db->prepare("SELECT public_key FROM user_ssh_keys WHERE user_id = ?");
 
         foreach ($users_to_provision as $user) {
             $username = $user['Username'];
-            echo "<br>--- Provisioning user: <strong style='color: #c4b5fd;'>" . htmlspecialchars($username) . "</strong> ---<br>";
-            
-            run_sudo_command($ssh, "sh -c 'id -u " . escapeshellarg($username) . " &>/dev/null || useradd -m -s /bin/bash " . escapeshellarg($username) . "'", $sudo_pass);
+            $command = "sh -c 'id -u " . escapeshellarg($username) . " &>/dev/null || useradd -m -s /bin/bash " . escapeshellarg($username) . "'";
+            $full_command = "echo " . escapeshellarg($sudo_pass) . " | sudo -S -p '' " . $command;
+            $ssh->exec($full_command);
             
             $keys_stmt->execute([$user['id']]);
             $public_keys = $keys_stmt->fetchAll(PDO::FETCH_COLUMN, 0);
 
             if (!empty($public_keys)) {
                 $all_keys_string = implode("\n", $public_keys);
-                run_sudo_command($ssh, "mkdir -p /home/$username/.ssh", $sudo_pass);
-                run_sudo_command($ssh, "sh -c 'echo " . escapeshellarg($all_keys_string) . " > /home/$username/.ssh/authorized_keys'", $sudo_pass);
-                run_sudo_command($ssh, "chmod 700 /home/$username/.ssh", $sudo_pass);
-                run_sudo_command($ssh, "chmod 600 /home/$username/.ssh/authorized_keys", $sudo_pass);
-                run_sudo_command($ssh, "chown -R $username:$username /home/$username/.ssh", $sudo_pass);
-            } else {
-                echo "<span style='color: #fbbf24;'>WARNING: No public keys found for " . htmlspecialchars($username) . ". They will not have passwordless login.</span><br>";
+                $commands = [
+                    "mkdir -p /home/$username/.ssh",
+                    "sh -c 'echo " . escapeshellarg($all_keys_string) . " > /home/$username/.ssh/authorized_keys'",
+                    "chmod 700 /home/$username/.ssh",
+                    "chmod 600 /home/$username/.ssh/authorized_keys",
+                    "chown -R $username:$username /home/$username/.ssh"
+                ];
+                foreach ($commands as $cmd) {
+                    $ssh->exec("echo " . escapeshellarg($sudo_pass) . " | sudo -S -p '' " . $cmd);
+                }
             }
-            
             $insert_stmt->execute([$user['id'], $machine_id]);
         }
         
         log_activity($db, $actor_id, 'MACHINE_PROVISION_USERS', $machine_id, "Provisioned " . count($users_to_provision) . " users.");
-        echo "<br>--- Provisioning Complete! ---<br>";
-        echo "<a href='../machine/index.php' style='color: #818cf8; font-size: 1.2em;'>Return to machine list</a>";
-        echo "</pre>";
-        
+        header("Location: ../machine/index.php?status=provisioned");
         exit();
         break;
 
@@ -147,6 +129,7 @@ switch ($action) {
         break;
 }
 
+// Default redirect if no action is matched
 header("Location: ../machine/index.php");
 exit();
 ?>

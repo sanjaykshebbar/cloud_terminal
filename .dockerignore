@@ -1,8 +1,19 @@
+# Git and IDE files
 .git
-.vscode
+.vscode/
+.idea/
 .gitignore
+
+# Docker specific files
 .dockerignore
 Dockerfile
+docker-compose.yml
+
+# Batch/Shell scripts
+*.bat
+*.sh
+
+# Local Database and dependencies
 db/
 vendor/
 node_modules/
